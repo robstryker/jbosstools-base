@@ -57,6 +57,11 @@ import org.osgi.service.packageadmin.PackageAdmin;
 import org.osgi.util.tracker.ServiceTracker;
 
 /**
+ * TODO!  Deprecate this class and have it extend
+ * org.jboss.tools.stacks.core.util.ECFTransport
+ * for backwards compat. 
+ * 
+ * 
  * @author snjeza
  * based on org.eclipse.equinox.internal.p2.updatesite.ECFTransport
  * 
