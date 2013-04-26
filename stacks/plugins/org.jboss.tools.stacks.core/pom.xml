@@ -10,6 +10,13 @@
 	<artifactId>org.jboss.tools.stacks.core</artifactId> 
 	
 	<packaging>eclipse-plugin</packaging>
+	<dependencies>
+		<dependency>
+		      <groupId>org.jboss.jdf</groupId>
+		      <artifactId>stacks-client</artifactId>
+		      <version>1.0.0.Final</version>
+		</dependency>
+	</dependencies>
 	<build>
 		<plugins>
 			<plugin>
@@ -19,20 +26,13 @@
 					<execution>
 						<id>get-runtime</id>
 						<goals>
-							<goal>unpack</goal>
+							<goal>copy-dependencies</goal>
 						</goals>
 						<phase>generate-resources</phase>
 						<configuration>
-							<artifactItems>
-								<artifactItem>
-									<groupId>org.jboss.forge</groupId>
-									<artifactId>forge-distribution</artifactId>
-									<version>1.2.3.Final</version>
-									<type>zip</type>
-							  	</artifactItem>
-							</artifactItems>
 							<skip>false</skip>
-							<outputDirectory>${basedir}</outputDirectory>
+							<outputDirectory>${basedir}/lib/</outputDirectory>
+							<excludeGroupIds>org.eclipse</excludeGroupIds>
 						</configuration>
 					</execution>
 				</executions>
