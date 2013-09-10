@@ -25,4 +25,6 @@ Export-Package: org.jboss.tools.runtime.ui,
  org.jboss.tools.runtime.ui.dialogs,
  org.jboss.tools.runtime.ui.download,
  org.jboss.tools.runtime.ui.internal.wizard,
- org.jboss.tools.runtime.ui.preferences
+ org.jboss.tools.runtime.ui.preferences,
+ org.jboss.tools.runtime.ui.taskwizard;x-friends:="org.jboss.tools.as.runtimes.integration",
+ org.jboss.tools.runtime.ui.wizard

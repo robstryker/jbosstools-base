@@ -102,6 +102,9 @@ public class Messages extends NLS {
 	public static String SearchRuntimePathDialog_Searching_runtimes_is_canceled;
 	public static String SearchRuntimePathDialog_Searching_runtimes_is_finished;
 	public static String SearchRuntimePathDialog_Select_All;
+	
+	public static String WizardError;
+	
 	static {
 		// initialize resource bundle
 		NLS.initializeMessages(BUNDLE_NAME, Messages.class);

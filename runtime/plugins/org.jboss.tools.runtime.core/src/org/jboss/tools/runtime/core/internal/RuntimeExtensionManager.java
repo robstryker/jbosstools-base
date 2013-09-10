@@ -92,7 +92,7 @@ public class RuntimeExtensionManager {
 	 * @return
 	 */
 	public Set<IRuntimeDetector> loadDeclaredRuntimeDetectors() {
-			 Set<IRuntimeDetector> declared = new TreeSet<IRuntimeDetector>();
+		Set<IRuntimeDetector> declared = new TreeSet<IRuntimeDetector>();
 		IExtensionRegistry registry = Platform.getExtensionRegistry();
 		IExtensionPoint extensionPoint = registry
 				.getExtensionPoint(RUNTIME_DETECTOR_EXTENSION_ID);
@@ -129,7 +129,7 @@ public class RuntimeExtensionManager {
 
 		IRuntimeDetectorDelegate delegate = null;
 		try {
-			delegate = (IRuntimeDetectorDelegate) configurationElement.createExecutableExtension("class"); //$NON-NLS-1$
+			delegate = (IRuntimeDetectorDelegate) configurationElement.createExecutableExtension(CLAZZ);
 			RuntimeDetector detector = new RuntimeDetector(
 					name, id, preferenceId, priority, delegate);
 			detector.setEnabled(Boolean.parseBoolean(enabled));

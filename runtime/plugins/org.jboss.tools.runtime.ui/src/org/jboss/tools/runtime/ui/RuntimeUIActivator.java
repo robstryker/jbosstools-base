@@ -13,6 +13,7 @@ package org.jboss.tools.runtime.ui;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Set;
 
@@ -22,11 +23,16 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.preferences.ConfigurationScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.jface.operation.IRunnableWithProgress;
+import org.eclipse.osgi.service.debug.DebugOptions;
+import org.eclipse.osgi.service.debug.DebugOptionsListener;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
+import org.jboss.tools.foundation.core.plugin.log.IPluginLog;
+import org.jboss.tools.foundation.core.plugin.log.PluginLog;
+import org.jboss.tools.foundation.core.plugin.log.StatusFactory;
 import org.jboss.tools.runtime.core.RuntimeCoreActivator;
 import org.jboss.tools.runtime.core.model.IRuntimeDetector;
 import org.jboss.tools.runtime.core.model.RuntimeDefinition;
@@ -36,6 +42,7 @@ import org.jboss.tools.runtime.core.util.RuntimeInitializerUtil;
 import org.jboss.tools.runtime.core.util.RuntimeModelUtil;
 import org.jboss.tools.runtime.ui.dialogs.SearchRuntimePathDialog;
 import org.jboss.tools.runtime.ui.download.DownloadRuntimes;
+import org.jboss.tools.runtime.ui.internal.Trace;
 import org.osgi.framework.BundleContext;
 
 /**
@@ -69,8 +76,9 @@ public class RuntimeUIActivator extends AbstractUIPlugin {
 	public static final String PREFERENCES_VERSION = "version"; //$NON-NLS-1$
 
 	private BundleContext context;
-	
 	private RuntimeModel runtimeModel;
+	private IPluginLog pluginLog = null;
+	private StatusFactory statusFactory = null;
 	
 	/**
 	 * The constructor
@@ -78,6 +86,22 @@ public class RuntimeUIActivator extends AbstractUIPlugin {
 	public RuntimeUIActivator() {
 	}
 
+	protected IPluginLog pluginLogInternal() {
+		if( pluginLog == null )
+			pluginLog = new PluginLog(this);
+		return pluginLog;
+	}
+	
+	/**
+	 * Get a status factory for this plugin
+	 * @return status factory
+	 */
+	protected StatusFactory statusFactoryInternal() {
+		if( statusFactory == null ) 
+			statusFactory = new StatusFactory(getBundle().getSymbolicName());
+		return statusFactory;
+	}
+	
 	public BundleContext getBundleContext() {
 		return context;
 	}
@@ -91,6 +115,11 @@ public class RuntimeUIActivator extends AbstractUIPlugin {
 		plugin = this;
 		this.context = context;
 		RuntimeCoreActivator.getDefault().setDownloader(new DownloadRuntimes());
+		
+		// register the debug options listener
+		final Hashtable<String, String> props = new Hashtable<String, String>(4);
+		props.put(DebugOptions.LISTENER_SYMBOLICNAME, PLUGIN_ID);
+		context.registerService(DebugOptionsListener.class.getName(), new Trace(), props);
 	}
 
 	/*
