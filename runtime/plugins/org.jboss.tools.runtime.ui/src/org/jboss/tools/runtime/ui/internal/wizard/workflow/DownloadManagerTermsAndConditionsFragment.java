@@ -304,6 +304,7 @@ public class DownloadManagerTermsAndConditionsFragment extends WizardFragment {
 	}
 
 	protected void acceptPressed() {
+		handle.setMessage(null, IWizardHandle.NONE);
 		final Exception[] error = new Exception[1];
 		error[0] = null;
 		try {
@@ -328,6 +329,7 @@ public class DownloadManagerTermsAndConditionsFragment extends WizardFragment {
 			handle.setMessage("Unable to accept terms and conditions: " + error[0].getClass().getName() + " - " + error[0].getMessage(), IWizardHandle.ERROR);
 		} else {
 			setComplete(true);
+			acceptButton.setEnabled(false);
 		}
 	}
 	protected void sendAccepted(String countryString) throws Exception {
