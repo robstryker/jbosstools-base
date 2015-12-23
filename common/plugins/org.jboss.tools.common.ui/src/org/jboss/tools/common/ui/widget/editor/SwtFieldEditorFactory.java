@@ -18,7 +18,6 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.Adapters;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
@@ -40,7 +39,6 @@ import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.ui.dialogs.ElementListSelectionDialog;
 import org.eclipse.ui.dialogs.ElementTreeSelectionDialog;
 import org.eclipse.ui.dialogs.ISelectionStatusValidator;
-import org.eclipse.ui.internal.util.Util;
 import org.eclipse.ui.model.IWorkbenchAdapter;
 import org.eclipse.ui.model.WorkbenchContentProvider;
 import org.eclipse.ui.model.WorkbenchLabelProvider;
@@ -294,7 +292,7 @@ public class SwtFieldEditorFactory implements IFieldEditorFactory {
 			}
 
 			if (element instanceof IWorkspace) {
-		        IWorkbenchAdapter adapter = Adapters.adapt(element, IWorkbenchAdapter.class);
+		        IWorkbenchAdapter adapter = ((IWorkspace)element).getAdapter(IWorkbenchAdapter.class);
 		        if (adapter != null) {
 		        	Object[] children = adapter.getChildren(element);
 		        	List<Object> result = new ArrayList<Object>();

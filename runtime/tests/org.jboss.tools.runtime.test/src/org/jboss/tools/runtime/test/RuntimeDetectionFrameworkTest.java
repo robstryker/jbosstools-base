@@ -26,6 +26,7 @@ import org.jboss.tools.runtime.core.model.RuntimeDefinition;
 import org.jboss.tools.runtime.core.model.RuntimePath;
 import org.jboss.tools.runtime.handlers.TestHandler1;
 import org.jboss.tools.runtime.ui.RuntimeUIActivator;
+import org.jboss.tools.test.util.JobUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -68,6 +69,7 @@ public class RuntimeDetectionFrameworkTest extends TestCase {
 	
 	@Test
 	public void testLoadSaveRuntimePaths() {
+		JobUtils.waitForIdle(300);
 		String path = "test/path/one";
 		RuntimePath[] runtimePaths = RuntimeUIActivator.getDefault().getModel().getRuntimePaths();
 		// First start should include the default jboss-runtimes path
