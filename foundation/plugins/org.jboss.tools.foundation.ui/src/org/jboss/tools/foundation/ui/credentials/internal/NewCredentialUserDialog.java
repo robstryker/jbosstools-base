@@ -11,7 +11,10 @@
 package org.jboss.tools.foundation.ui.credentials.internal;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.IMessageProvider;
 import org.eclipse.jface.dialogs.TitleAreaDialog;
@@ -19,31 +22,42 @@ import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
-import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
+import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.FormLayout;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
+import org.eclipse.ui.forms.widgets.ScrolledPageBook;
+import org.jboss.tools.foundation.core.credentials.CredentialService;
 import org.jboss.tools.foundation.core.credentials.ICredentialDomain;
+import org.jboss.tools.foundation.core.credentials.ICredentialType;
 import org.jboss.tools.foundation.core.credentials.ICredentialsModel;
+import org.jboss.tools.foundation.core.credentials.internal.CredentialExtensionManager;
+import org.jboss.tools.foundation.ui.credentials.ICredentialTypeUI;
+import org.jboss.tools.foundation.ui.credentials.IValidationCallback;
 import org.jboss.tools.foundation.ui.util.FormDataUtility;
 
-public class NewCredentialUserDialog extends TitleAreaDialog {
-
+public class NewCredentialUserDialog extends TitleAreaDialog implements IValidationCallback {
+	private static final int rightMargin = -10;
+	
 	private ICredentialsModel model;
 	private ICredentialDomain selectedDomain;
-	private String user, pass;
-	private String[] domainNames;
+	private ICredentialType selectedCredentialType;
+	private String user;
+	private String[] domainNames, typeNames;
 	private ICredentialDomain[] allDomains;
+	private ICredentialType[] allTypes;
+	
 	private boolean freezeUser = false;
 	private boolean freezeDomain = false;
+	private boolean freezeType = false;
+	
 	private boolean alwaysPrompt = false;
 	
 	/**
@@ -59,6 +73,15 @@ public class NewCredentialUserDialog extends TitleAreaDialog {
 		this.selectedDomain = selected;
 		if( selected != null ) 
 			freezeDomain = true;
+		selectedCredentialType = CredentialService.getCredentialModel().getDefaultCredentialType();
+	}
+	
+	public NewCredentialUserDialog(Shell parentShell, ICredentialsModel model, ICredentialDomain selected, ICredentialType type) {
+		this(parentShell, model, selected);
+		selectedCredentialType = type;
+		if( selectedCredentialType != null ) {
+			freezeType = true;
+		}
 	}
 	
 	/**
@@ -69,14 +92,11 @@ public class NewCredentialUserDialog extends TitleAreaDialog {
 	 * @param selected
 	 * @param user
 	 */
-	public NewCredentialUserDialog(Shell parentShell, ICredentialsModel model, ICredentialDomain selected, String user) {
-		super(parentShell);
-		this.model = model;
-		this.selectedDomain = selected;
+	public NewCredentialUserDialog(Shell parentShell, ICredentialsModel model, ICredentialDomain selected, ICredentialType type, String user) {
+		this(parentShell, model, selected, type);
 		this.user = user;
-		freezeDomain = true;
 		freezeUser = true;
-		alwaysPrompt = model.credentialRequiresPrompt(selected, user);
+		alwaysPrompt = model.credentialRequiresPrompt(selected, type, user);
 	}
 
 	@Override
@@ -101,117 +121,36 @@ public class NewCredentialUserDialog extends TitleAreaDialog {
         int ret = super.getShellStyle();
         return ret | SWT.RESIZE;
     }
-	protected Control createDialogArea(Composite parent) {
+    
+    private void initTitleMessage() {
 		if( freezeUser)  {
 			setTitle(CredentialMessages.EditACredentialLabel);
 			setMessage("Existing passwords will not shown.");
-		} else
+		} else {
 			setTitle(CredentialMessages.AddACredentialLabel);
-		Composite main = new Composite((Composite)super.createDialogArea(parent), SWT.NONE);
-		main.setLayoutData(new GridData(GridData.FILL_BOTH));
-		main.setLayout(new FormLayout());
-		
-		final Combo domains = new Combo(main, SWT.SINGLE | SWT.BORDER | SWT.READ_ONLY);
-		Label l = new Label(main, SWT.NONE);
-		l.setText(CredentialMessages.DomainLabel);
-		Label separator = new Label(main, SWT.SEPARATOR | SWT.HORIZONTAL);
-		
+		}
+    }
+    
+    // Return the bottom-most widget
+    private Control createDomainWidgets(Composite main) {
 		allDomains = model.getDomains();
 		domainNames = new String[allDomains.length];
 		for( int i = 0; i < allDomains.length; i++ ) {
 			domainNames[i] = allDomains[i].getName();
 		}
+		final Combo domains = new Combo(main, SWT.SINGLE | SWT.BORDER | SWT.READ_ONLY);
+		Label l = new Label(main, SWT.NONE);
+		l.setText(CredentialMessages.DomainLabel);
+		l.setLayoutData(		new FormDataUtility().createFormData(0, 12,	null, 0, 0, 10, null, 0));
+		domains.setLayoutData(	new FormDataUtility().createFormData(0, 8, 	null, 0, 25, 0, 100, rightMargin));
+
 		domains.setItems(domainNames);
-		
 		if( selectedDomain != null ) {
 			int sIndex = Arrays.asList(allDomains).indexOf(selectedDomain);
 			if( sIndex != -1) {
 				domains.select(sIndex);
 			}
 		}
-		
-		
-		Label nameLabel = new Label(main, SWT.None);
-		nameLabel.setText(CredentialMessages.UsernameLabel);
-		final Text nameText = new Text(main, SWT.SINGLE | SWT.BORDER);
-		
-		final Button promptBtn = new Button(main, SWT.CHECK);
-		promptBtn.setText(CredentialMessages.AlwaysPromptForPasswordLabel);
-		promptBtn.setSelection(alwaysPrompt);
-		
-		Label passLabel = new Label(main, SWT.None);
-		passLabel.setText(CredentialMessages.PasswordLabel);
-		final Text passText = new Text(main, SWT.SINGLE | SWT.BORDER);
-
-		if( user != null ) {
-			nameText.setText(user);
-		}
-		
-		final Button showPassword = new Button(main, SWT.CHECK );
-		showPassword.setText(CredentialMessages.ShowPasswordLabel);
-		class SL implements SelectionListener {
-
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				passwordVisibility();
-			}
-
-			@Override
-			public void widgetDefaultSelected(SelectionEvent e) {
-				passwordVisibility();
-			}
-
-			protected void passwordVisibility() {
-				boolean selected = showPassword.getSelection();
-				if (selected) {
-					passText.setEchoChar('\0');
-				} else {
-					passText.setEchoChar('*');
-				}
-			}
-		}
-		SL sl = new SL();
-		showPassword.setSelection(false);
-		passText.setEchoChar('*');
-		showPassword.addSelectionListener(sl);
-		sl.passwordVisibility();
-
-		int rightMargin = -10;
-		l.setLayoutData(		new FormDataUtility().createFormData(0, 12,	null, 0, 0, 10, null, 0));
-		domains.setLayoutData(	new FormDataUtility().createFormData(0, 8, 	null, 0, 25, 0, 100, rightMargin));
-
-		separator.setLayoutData(new FormDataUtility().createFormData(l, 29,	null, 0, 0, 10, 100, rightMargin));
-
-		nameLabel.setLayoutData(new FormDataUtility().createFormData(separator, 17,	null, 0, 0, 10, null, 0));
-		nameText.setLayoutData(	new FormDataUtility().createFormData(separator, 13,	null, 0, 25, 0, 100, rightMargin));
-		
-		promptBtn.setLayoutData(new FormDataUtility().createFormData(nameLabel,	21,	null, 0, 0, 10, 100, rightMargin));
-		
-		passLabel.setLayoutData(new FormDataUtility().createFormData(promptBtn, 15,	null, 0, 0, 10, null, 0));
-		passText.setLayoutData(	new FormDataUtility().createFormData(promptBtn,	11,	null, 0, 25, 0, 100, rightMargin));
-		showPassword.setLayoutData(new FormDataUtility().createFormData(passText,	11,	null, 0, passText, -140, 100, rightMargin));
-
-		nameText.addModifyListener(new ModifyListener() {
-			public void modifyText(ModifyEvent e) {
-				user = nameText.getText();
-				validate();
-			}
-		});
-		promptBtn.addSelectionListener( new SelectionAdapter() {
-			public void widgetSelected(SelectionEvent e) {
-				boolean enabled = !promptBtn.getSelection();
-				passText.setEnabled(enabled);
-				showPassword.setEnabled(enabled);
-				alwaysPrompt = promptBtn.getSelection();
-				validate();
-			}
-		});
-		passText.addModifyListener(new ModifyListener() {
-			public void modifyText(ModifyEvent e) {
-				pass = passText.getText();
-				validate();
-			}
-		});
 		
 		domains.addSelectionListener(new SelectionListener() {
 			public void widgetSelected(SelectionEvent e) {
@@ -228,13 +167,140 @@ public class NewCredentialUserDialog extends TitleAreaDialog {
 		if( freezeDomain) {
 			domains.setEnabled(false);
 		}
+		
+		return domains;
+    }
+    
+    
+
+    // Return the bottom-most widget
+    private Control createTypeWidgets(Composite main, Control above) {
+		allTypes = model.getCredentialTypes();
+		typeNames = new String[allTypes.length];
+		for( int i = 0; i < typeNames.length; i++ ) {
+			typeNames[i] = allTypes[i].getId();
+		}
+		final Combo types = new Combo(main, SWT.SINGLE | SWT.BORDER | SWT.READ_ONLY);
+		Label l = new Label(main, SWT.NONE);
+		l.setText("Credential Type:");
+		l.setLayoutData(		new FormDataUtility().createFormData(above, 12,	null, 0, 0, 10, null, 0));
+		types.setLayoutData(	new FormDataUtility().createFormData(above, 8, 	null, 0, 25, 0, 100, rightMargin));
+
+		types.setItems(typeNames);
+		if( selectedCredentialType != null ) {
+			int sIndex = Arrays.asList(allTypes).indexOf(selectedCredentialType);
+			if( sIndex != -1) {
+				types.select(sIndex);
+			}
+		}
+		
+		types.addSelectionListener(new SelectionListener() {
+			public void widgetSelected(SelectionEvent e) {
+				int i = types.getSelectionIndex();
+				if( i != -1 ) {
+					selectedCredentialType = allTypes[i];
+				}
+				updatePageBook();
+				validate();
+			}
+			public void widgetDefaultSelected(SelectionEvent e) {
+			}
+		});
+		
+		if( freezeType) {
+			types.setEnabled(false);
+		}
+		
+		return types;
+    }
+    
+    private Control createUsernameWidgets(Composite main, Control above) {
+
+		Label nameLabel = new Label(main, SWT.None);
+		nameLabel.setText(CredentialMessages.UsernameLabel);
+		final Text nameText = new Text(main, SWT.SINGLE | SWT.BORDER);
+		
+
+		if( user != null ) {
+			nameText.setText(user);
+		}
+		nameLabel.setLayoutData(new FormDataUtility().createFormData(above, 17,	null, 0, 0, 10, null, 0));
+		nameText.setLayoutData(	new FormDataUtility().createFormData(above, 13,	null, 0, 25, 0, 100, rightMargin));
+		
+		nameText.addModifyListener(new ModifyListener() {
+			public void modifyText(ModifyEvent e) {
+				user = nameText.getText();
+				validate();
+			}
+		});
+		
 		if( freezeUser ) {
 			nameText.setEnabled(false);
 		}
-		if( alwaysPrompt ) {
-			passText.setEnabled(false);
-		}
+		return nameText;
+    }
+	protected Control createDialogArea(Composite parent) {
+		initTitleMessage();
+		Composite main = new Composite((Composite)super.createDialogArea(parent), SWT.NONE);
+		main.setLayoutData(new GridData(GridData.FILL_BOTH));
+		main.setLayout(new FormLayout());
+		
+		Control domains = createDomainWidgets(main);
+		Control types = createTypeWidgets(main, domains);
+		Control nameText = createUsernameWidgets(main, types);
+		
+		Label separator = new Label(main, SWT.SEPARATOR | SWT.HORIZONTAL);
+		separator.setLayoutData(new FormDataUtility().createFormData(nameText, 29,	null, 0, 0, 10, 100, rightMargin));
+
+		fillDetailsSection(main, separator);
 		return main;
+	}
+	
+	
+	private ICredentialTypeUI selectedUI;
+	private ScrolledPageBook preferencePageBook;
+	private Object EMPTY = new Object();
+	private Map<ICredentialType, ICredentialTypeUI> typeToUI;
+	private void fillDetailsSection(Composite main, Control above) {
+		typeToUI = new HashMap<ICredentialType, ICredentialTypeUI>();
+		preferencePageBook = new ScrolledPageBook(main, SWT.NONE);
+		preferencePageBook.setLayoutData(new FormDataUtility().createFormData(above, 21, 80, -5, 0, 10, 100, rightMargin));
+		Composite noTypeSelected = preferencePageBook.createPage(EMPTY);
+		noTypeSelected.setLayout(new FillLayout());
+		Label selectType = new Label(noTypeSelected, SWT.NONE);
+		selectType.setText("Please select a credential type.");
+		preferencePageBook.showPage(EMPTY);
+		if( selectedCredentialType != null ) {
+			updatePageBook();
+		}
+	}
+	
+	private void updatePageBook() {
+		if( selectedCredentialType != null ) {
+			selectedUI = discoverSelectedUI(selectedCredentialType);
+			if( selectedUI != null ) {
+				if( !preferencePageBook.hasPage(selectedUI)) {
+					Composite uiComposite = preferencePageBook.createPage(selectedUI);
+					selectedUI.fillComposite(uiComposite, alwaysPrompt, this);
+				}
+				preferencePageBook.showPage(selectedUI);
+			} else {
+				preferencePageBook.showPage(EMPTY);
+			}
+		} else {
+			preferencePageBook.showPage(EMPTY);
+		}
+	}
+	
+	private ICredentialTypeUI discoverSelectedUI(ICredentialType type) {
+		if( typeToUI.get(type) != null ) {
+			return typeToUI.get(type);
+		}
+		ICredentialTypeUI ui = CredentialUIExtensionManager.getDefault().createCredentialUI(type.getId());
+		if( ui != null ) {
+			typeToUI.put(type,  ui);
+		}
+		return ui;
 	}
 	
 	private void validate() {
@@ -256,12 +322,18 @@ public class NewCredentialUserDialog extends TitleAreaDialog {
 			return;
 		}
 		
-		if( !alwaysPrompt && ( pass == null || pass.isEmpty())) {
-			setMessage(CredentialMessages.PasswordCannotBeBlank, IMessageProvider.ERROR);
+		IStatus s = selectedUI.validate();
+		setValidationStatus(s);
+	}
+
+	@Override
+	public void setValidationStatus(IStatus s) {
+		if( !s.isOK()) {
+			// TODO fix this garbage w icon 
+			setMessage(s.getMessage(), IMessageProvider.ERROR);
 			getButton(IDialogConstants.OK_ID).setEnabled(false);
 			return;
 		}
-		
 		setMessage(null, IMessageProvider.NONE);
 		getButton(IDialogConstants.OK_ID).setEnabled(true);
 	}
@@ -272,10 +344,13 @@ public class NewCredentialUserDialog extends TitleAreaDialog {
 	public String getUser() {
 		return user;
 	}
-	public boolean isAlwaysPrompt() {
-		return alwaysPrompt;
+	public ICredentialType getCredentialType() {
+		return selectedCredentialType;
 	}
-	public String getPass() {
-		return pass;
+	public boolean isAlwaysPrompt() {
+		return selectedUI.isAlwaysPrompt();
+	}
+	public Map<String, String> getProperties() {
+		return selectedUI.getProperties();
 	}
 }

@@ -14,6 +14,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.jboss.tools.foundation.core.credentials.ICredentialDomain;
+import org.jboss.tools.foundation.core.credentials.ICredentialResult;
 
 public class ChooseCredentialComposite extends Composite {
 	
@@ -78,7 +79,7 @@ public class ChooseCredentialComposite extends Composite {
 		return component.getUser();
 	}
 	
-	public String getPassword() {
+	public ICredentialResult getPassword() {
 		return component.getPassword();
 	}
 	public void setEnabled (boolean enabled) {

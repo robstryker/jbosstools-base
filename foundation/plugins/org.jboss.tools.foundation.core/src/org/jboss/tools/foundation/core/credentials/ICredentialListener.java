@@ -36,21 +36,21 @@ public interface ICredentialListener {
 	 * @param domain
 	 * @param user
 	 */
-	public void defaultUsernameChanged(ICredentialDomain domain, String user);
+	public void defaultUsernameChanged(ICredentialDomain domain, String user, ICredentialType type);
 	
 	/**
 	 * A credential has been added to the model
 	 * @param domain
 	 * @param user
 	 */
-	public void credentialAdded(ICredentialDomain domain, String user);
+	public void credentialAdded(ICredentialDomain domain, String user, ICredentialType type);
 	
 	/**
 	 * A user/pass combination has been removed from the model
 	 * @param domain
 	 * @param user
 	 */
-	public void credentialRemoved(ICredentialDomain domain, String user);
+	public void credentialRemoved(ICredentialDomain domain, String user, ICredentialType type);
 	
 	/**
 	 * Something about this credential has changed, most likely the password.
@@ -59,6 +59,6 @@ public interface ICredentialListener {
 	 * @param domain
 	 * @param user
 	 */
-	public void credentialChanged(ICredentialDomain domain, String user);
+	public void credentialChanged(ICredentialDomain domain, String user, ICredentialType type);
 	
 }

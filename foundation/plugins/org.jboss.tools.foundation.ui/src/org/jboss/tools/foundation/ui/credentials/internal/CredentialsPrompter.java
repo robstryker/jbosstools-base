@@ -10,25 +10,32 @@
  ******************************************************************************/
 package org.jboss.tools.foundation.ui.credentials.internal;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.eclipse.jface.window.Window;
 import org.eclipse.ui.PlatformUI;
 import org.jboss.tools.foundation.core.credentials.ICredentialDomain;
+import org.jboss.tools.foundation.core.credentials.ICredentialResult;
+import org.jboss.tools.foundation.core.credentials.ICredentialType;
 import org.jboss.tools.foundation.core.credentials.ICredentialsPrompter;
 
 public class CredentialsPrompter implements ICredentialsPrompter {
 
 	private ICredentialDomain domain;
+	private ICredentialType type;
 	private String initialUser;
 	private String selectedUser, selectedPassword;
 	private boolean canChangeUser, saveChanges;
 	
 	public CredentialsPrompter() {
-		// TODO Auto-generated constructor stub
+		// Auto-generated constructor stub for debugging
 	}
 
 	@Override
-	public void init(ICredentialDomain domain, String user, boolean canChangeUser) {
+	public void init(ICredentialDomain domain, ICredentialType type, String user, boolean canChangeUser) {
 		this.domain = domain;
+		this.type = type;
 		this.initialUser = user;
 		this.canChangeUser = canChangeUser;
 	}
@@ -62,8 +69,10 @@ public class CredentialsPrompter implements ICredentialsPrompter {
 	}
 
 	@Override
-	public String getPassword() {
-		return selectedPassword;
+	public ICredentialResult getPassword() {
+		Map<String, String> details = new HashMap<String, String>();
+		details.put("pass", selectedPassword);
+		return type.resolveCredentials(domain, getUsername(), details);
 	}
 
 	@Override

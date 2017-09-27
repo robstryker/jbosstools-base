@@ -135,7 +135,7 @@ public class DownloadManagerCredentialsFragment extends WizardFragment {
 	
 	private void readFromCredentialComposite(boolean validate) {
 		getTaskModel().putObject(DownloadRuntimesTaskWizard.USERNAME_KEY, chooseCredentialComposite.getUser());
-		getTaskModel().putObject(DownloadRuntimesTaskWizard.PASSWORD_KEY, chooseCredentialComposite.getPassword());
+		getTaskModel().putObject(DownloadRuntimesTaskWizard.PASSWORD_KEY, chooseCredentialComposite.getPassword().stringValue());
 		if( validate ) 
 			validateFragment();
 	}

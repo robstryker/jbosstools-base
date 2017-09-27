@@ -3,6 +3,7 @@
 <plugin>
    <extension-point id="org.jboss.tools.foundation.core.propertiesProviders" name="propertiesProviders" schema="schema/org.jboss.tools.foundation.core.propertiesProviders.exsd"/>
    <extension-point id="org.jboss.tools.foundation.core.credentialPrompter" name="credentialPrompter" schema="schema/org.jboss.tools.foundation.core.credentialPrompter.exsd"/>
+   <extension-point id="org.jboss.tools.foundation.core.credentialType" name="credentialType" schema="schema/org.jboss.tools.foundation.core.credentialType.exsd"/>
 
    <extension
          point="org.jboss.tools.foundation.core.propertiesProviders">
@@ -11,5 +12,12 @@
                context="jbosstools"
                id="jbosstools.properties.provider">
          </propertiesProvider>
+   </extension>
+   <extension
+         point="org.jboss.tools.foundation.core.credentialType">
+      <credentialType
+            class="org.jboss.tools.foundation.core.credentials.UserPasswordCredentialType"
+            default="true">
+      </credentialType>
    </extension>
 </plugin>

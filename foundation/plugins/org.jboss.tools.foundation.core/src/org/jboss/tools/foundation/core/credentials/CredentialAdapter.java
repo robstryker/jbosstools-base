@@ -31,25 +31,25 @@ public class CredentialAdapter implements ICredentialListener {
 	}
 
 	@Override
-	public void credentialAdded(ICredentialDomain domain, String user) {
+	public void credentialAdded(ICredentialDomain domain, String user, ICredentialType type) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void credentialRemoved(ICredentialDomain domain, String user) {
+	public void credentialRemoved(ICredentialDomain domain, String user, ICredentialType type) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void credentialChanged(ICredentialDomain domain, String user) {
+	public void credentialChanged(ICredentialDomain domain, String user, ICredentialType type) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void defaultUsernameChanged(ICredentialDomain domain, String user) {
+	public void defaultUsernameChanged(ICredentialDomain domain, String user, ICredentialType type) {
 		// TODO Auto-generated method stub
 		
 	}

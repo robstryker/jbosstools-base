@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.0"?>
 <plugin>
+   <extension-point id="credentialTypeUI" name="credentialTypeUI" schema="schema/credentialTypeUI.exsd"/>
     <extension
           point="org.eclipse.ui.preferencePages">
        <page
@@ -13,7 +14,15 @@
     <extension
           point="org.jboss.tools.foundation.core.credentialPrompter">
        <prompter
-             class="org.jboss.tools.foundation.ui.credentials.internal.CredentialsPrompter">
+             class="org.jboss.tools.foundation.ui.credentials.internal.CredentialsPrompter"
+             credentialType="user-pass">
        </prompter>
+    </extension>
+    <extension
+          point="org.jboss.tools.foundation.ui.credentialTypeUI">
+       <credentialTypeUI
+             class="org.jboss.tools.foundation.ui.credentials.internal.UserPassTypeUI"
+             credentialType="user-pass">
+       </credentialTypeUI>
     </extension>
 </plugin>

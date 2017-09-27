@@ -10,6 +10,8 @@
  ******************************************************************************/
 package org.jboss.tools.foundation.core.credentials;
 
+import java.util.Map;
+
 /**
  * The credential model, used to save username/password combinations for 
  * given domains. 
@@ -52,6 +54,8 @@ public interface ICredentialsModel {
 	
 	/**
 	 * Add a credential to the provided domain
+	 * Defaults to using TODO credential type
+	 * 
 	 * @param domain
 	 * @param user
 	 * @param pass
@@ -60,21 +64,39 @@ public interface ICredentialsModel {
 	
 	/**
 	 * Add credentials that require a prompt on every occasion
+	 * Defaults to using TODO type 
+	 * 
 	 * @param domain
 	 * @param user
 	 */
 	public void addPromptedCredentials(ICredentialDomain domain, String user);
 	
+
+	/**
+	 * Add a credential to the provided domain
+	 * @param domain
+	 * @param user
+	 * @param pass
+	 */
+	public void addCredentials(ICredentialDomain domain, ICredentialType type, String user, Map<String, String> properties);
+	
+	/**
+	 * Add credentials that require a prompt on every occasion
+	 * @param domain
+	 * @param user
+	 */
+	public void addPromptedCredentials(ICredentialDomain domain, ICredentialType type, String user);
+	
 	
 	/**
 	 * Return whether this credential requires a prompt on every occasion
-	 * @param domain	@Override
+	 * @param domain
 
 	 * @param user
 	 * @return
 	 */
-	public boolean credentialRequiresPrompt(ICredentialDomain domain, String user);
-	
+	public boolean credentialRequiresPrompt(ICredentialDomain domain, ICredentialType type, String user);
+
 	/**
 	 * Remove a credential from the given credential domain
 	 * @param domain
@@ -88,6 +110,21 @@ public interface ICredentialsModel {
 	 * @param user
 	 */
 	public void setDefaultCredential(ICredentialDomain domain, String user);
+	
+
+	/**
+	 * Remove a credential from the given credential domain
+	 * @param domain
+	 * @param user
+	 */
+	public void removeCredentials(ICredentialDomain domain, ICredentialType type, String user);
+	
+	/**
+	 * Change the default username for this domain
+	 * @param domain
+	 * @param user
+	 */
+	public void setDefaultCredential(ICredentialDomain domain, ICredentialType type, String user);
 	
 	/**
 	 * Add a credential listener to this framework
@@ -115,4 +152,22 @@ public interface ICredentialsModel {
 	 * @return
 	 */
 	public boolean save();
+	/**
+	 * Get the default credential type
+	 * @return
+	 */
+	public ICredentialType getDefaultCredentialType();
+	
+	/**
+	 * Get a list of registered credential types
+	 * @return
+	 */
+	public ICredentialType[] getCredentialTypes();
+	
+	/**
+	 * Get a given credential type by id
+	 * @param id
+	 * @return
+	 */
+	public ICredentialType getCredentialType(String id);
 }

@@ -20,11 +20,11 @@ public class UsernameChangedException extends Exception {
 	private ICredentialDomain initialDomain;
 	private String initialUser;
 	private String user;
-	private String password;
+	private ICredentialResult password;
 	private boolean saveCredentials;
 
 	public UsernameChangedException(ICredentialDomain initialDomain, String initialUser, 
-			String user, String password, boolean saveCredentials) {
+			String user, ICredentialResult password, boolean saveCredentials) {
 		super();
 		this.initialDomain = initialDomain;
 		this.initialUser = initialUser;
@@ -45,7 +45,7 @@ public class UsernameChangedException extends Exception {
 		return user;
 	}
 	
-	public String getPassword() {
+	public ICredentialResult getPassword() {
 		return password;
 	}
 

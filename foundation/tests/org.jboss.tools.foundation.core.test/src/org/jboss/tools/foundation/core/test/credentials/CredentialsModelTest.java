@@ -4,6 +4,7 @@ import org.jboss.tools.foundation.core.credentials.CredentialAdapter;
 import org.jboss.tools.foundation.core.credentials.CredentialService;
 import org.jboss.tools.foundation.core.credentials.ICredentialDomain;
 import org.jboss.tools.foundation.core.credentials.ICredentialListener;
+import org.jboss.tools.foundation.core.credentials.ICredentialType;
 import org.jboss.tools.foundation.core.credentials.ICredentialsModel;
 import org.junit.Test;
 
@@ -68,11 +69,11 @@ public class CredentialsModelTest extends TestCase {
 
 		ICredentialListener listener = new CredentialAdapter() {
 			@Override
-			public void credentialAdded(ICredentialDomain domain, String user) {
+			public void credentialAdded(ICredentialDomain domain, String user, ICredentialType type) {
 				checkAdded[0] = true;
 			}
 			@Override
-			public void credentialRemoved(ICredentialDomain domain, String user) {
+			public void credentialRemoved(ICredentialDomain domain, String user, ICredentialType type) {
 				checkRemoved[0] = true;
 			}
 		};

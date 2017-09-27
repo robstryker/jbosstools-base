@@ -16,14 +16,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.IConfigurationElement;
-import org.eclipse.core.runtime.IExtension;
-import org.eclipse.core.runtime.IExtensionPoint;
-import org.eclipse.core.runtime.IExtensionRegistry;
-import org.eclipse.core.runtime.InvalidRegistryObjectException;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.preferences.ConfigurationScope;
 import org.eclipse.core.runtime.preferences.IEclipsePreferences;
 import org.eclipse.core.runtime.preferences.InstanceScope;
@@ -33,6 +27,8 @@ import org.eclipse.equinox.security.storage.StorageException;
 import org.jboss.tools.foundation.core.credentials.CredentialService;
 import org.jboss.tools.foundation.core.credentials.ICredentialDomain;
 import org.jboss.tools.foundation.core.credentials.ICredentialListener;
+import org.jboss.tools.foundation.core.credentials.ICredentialResult;
+import org.jboss.tools.foundation.core.credentials.ICredentialType;
 import org.jboss.tools.foundation.core.credentials.ICredentialsModel;
 import org.jboss.tools.foundation.core.credentials.ICredentialsPrompter;
 import org.jboss.tools.foundation.core.credentials.UsernameChangedException;
@@ -87,8 +83,7 @@ public class CredentialsModel implements ICredentialsModel {
 				map.put(CredentialService.JBOSS_ORG, new CredentialDomain(CredentialService.JBOSS_ORG, CredentialService.JBOSS_ORG, false));
 			}
 		} catch(BackingStoreException bse) {
-			// TODO log
-			bse.printStackTrace();
+			FoundationCorePlugin.pluginLog().logError("Error loading saved credential data.", bse);
 		}
 	}
 	
@@ -99,7 +94,7 @@ public class CredentialsModel implements ICredentialsModel {
 	 * @param domain
 	 * @param user
 	 */
-	private void fireEvent(int type, ICredentialDomain domain, String user) {
+	private void fireEvent(int type, ICredentialDomain domain, String user, ICredentialType credentialType) {
 		Iterator<ICredentialListener> it = listeners.iterator();
 		while(it.hasNext()) {
 			switch(type) {
@@ -110,70 +105,109 @@ public class CredentialsModel implements ICredentialsModel {
 				it.next().domainRemoved(domain);
 				break;
 			case CREDENTIAL_ADDED:
-				it.next().credentialAdded(domain, user);
+				it.next().credentialAdded(domain, user, credentialType);
 				break;
 			case CREDENTIAL_REMOVED:
-				it.next().credentialRemoved(domain, user);
+				it.next().credentialRemoved(domain, user, credentialType);
 				break;
 			case CREDENTIAL_CHANGED:
-				it.next().credentialChanged(domain, user);
+				it.next().credentialChanged(domain, user, credentialType);
 				break;
 			case DEFAULT_CREDENTIAL_CHANGED:
-				it.next().defaultUsernameChanged(domain, user);
+				it.next().defaultUsernameChanged(domain, user, credentialType);
 				break;
 			}
 		}
 	}
-	
+
 	public void addCredentials(ICredentialDomain domain, String user, String pass) {
-		addCredentials(domain, user, false, pass);
+		HashMap<String, String> props = new HashMap<String, String>();
+		props.put("PASSWORD", pass); // TODO USE PROPER CONSTANT
+		addCredentials(domain, user, false, null, props);
 	}
 
 	public void addPromptedCredentials(ICredentialDomain domain, String user) {
-		addCredentials(domain, user, true, null);
-		
+		addCredentials(domain, user, true, null, Collections.emptyMap());
 	}
-	private void addCredentials(ICredentialDomain domain, String user, boolean prompt, String password) {
+
+	@Override
+	public void addCredentials(ICredentialDomain domain, ICredentialType type, String user,
+			Map<String, String> properties) {
+		addCredentials(domain, user, false, type, properties);
+	}
+
+	@Override
+	public void addPromptedCredentials(ICredentialDomain domain, ICredentialType type, String user) {
+		addCredentials(domain, user, true, type, Collections.emptyMap());
+	}
+
+	
+	private void addCredentials(ICredentialDomain domain, String user, 
+			boolean prompt, ICredentialType type, Map<String,String> props) {
 		CredentialDomain cd = (CredentialDomain)domain;
-		boolean existed = cd.userExists(user);
+		boolean existed = cd.userExists(user, type);
 		String preDefault = cd.getDefaultUsername();
 		
 		if( !prompt )
-			((CredentialDomain)domain).addCredentials(user, password);
+			((CredentialDomain)domain).addCredentials(user, type, props);
 		else
-			((CredentialDomain)domain).addPromptedCredentials(user);
+			((CredentialDomain)domain).addPromptedCredentials(user, type);
 		
 		String postDefault = cd.getDefaultUsername();
 		
 		// fire credential added or changed
 		if( !existed )
-			fireEvent(CREDENTIAL_ADDED, domain, user);
+			fireEvent(CREDENTIAL_ADDED, domain, user, type);
 		else 
-			fireEvent(CREDENTIAL_CHANGED, domain, user);
+			fireEvent(CREDENTIAL_CHANGED, domain, user, type);
 		
 		
 		if( !isEqual(preDefault, postDefault)) {
-			fireEvent(DEFAULT_CREDENTIAL_CHANGED, domain, user);
+			fireEvent(DEFAULT_CREDENTIAL_CHANGED, domain, user, type);
 		}
 	}
+
 	
 	public boolean credentialRequiresPrompt(ICredentialDomain domain, String user) {
-		return ((CredentialDomain)domain).userRequiresPrompt(user);
+		return credentialRequiresPrompt(domain, getDefaultCredentialType(), user);
 	}
 	
 
+	@Override
+	public boolean credentialRequiresPrompt(ICredentialDomain domain, ICredentialType type, String user) {
+		return ((CredentialDomain)domain).userRequiresPrompt(user, type);
+	}
 	
-	public void removeCredentials(ICredentialDomain domain, String user) {
+	public void removeCredentials(ICredentialDomain domain, ICredentialType type, String user) {
 		CredentialDomain cd = (CredentialDomain)domain;
 		String preDefault = cd.getDefaultUsername();
-		((CredentialDomain)domain).removeCredential(user);
+		((CredentialDomain)domain).removeCredential(user, type);
 		String postDefault = cd.getDefaultUsername();
-		fireEvent(CREDENTIAL_REMOVED, domain, user);
+		fireEvent(CREDENTIAL_REMOVED, domain, user, type);
 		if( !isEqual(preDefault, postDefault)) {
-			fireEvent(DEFAULT_CREDENTIAL_CHANGED, domain, user);
+			fireEvent(DEFAULT_CREDENTIAL_CHANGED, domain, user, type);
 		}
 	}
+	
 
+	@Override
+	public void removeCredentials(ICredentialDomain domain, String user) {
+		removeCredentials(domain, getDefaultCredentialType(), user);
+	}
+
+	public ICredentialType getDefaultCredentialType() {
+		return CredentialExtensionManager.getDefault().getDefaultCredentialType();
+	}
+	
+	public ICredentialType[] getCredentialTypes() {
+		return CredentialExtensionManager.getDefault().getCredentialTypes();
+	}
+	
+	public ICredentialType getCredentialType(String id) {
+		return CredentialExtensionManager.getDefault().getCredentialType(id);
+	}
+
+	
 	private boolean isEqual(String one, String two) {
 		if( one == null ) {
 			return two == null;
@@ -186,7 +220,7 @@ public class CredentialsModel implements ICredentialsModel {
 		if( !map.containsKey(id)) {
 			ICredentialDomain d = new CredentialDomain(id, name, removable);
 			map.put(d.getId(), d);
-			fireEvent(DOMAIN_ADDED, d, null);
+			fireEvent(DOMAIN_ADDED, d, null, null);
 			return d;
 		}
 		return null;
@@ -209,18 +243,25 @@ public class CredentialsModel implements ICredentialsModel {
 	public void removeDomain(ICredentialDomain domain) {
 		if( domain != null && map.containsKey(domain.getId())) {
 			map.remove(domain.getId());
-			fireEvent(DOMAIN_REMOVED, domain, null);
+			fireEvent(DOMAIN_REMOVED, domain, null, null);
 		}
 	}
 	
+	
+
 
 	@Override
-	public void setDefaultCredential(ICredentialDomain domain, String user) throws IllegalArgumentException {
+	public void setDefaultCredential(ICredentialDomain domain, ICredentialType type, String user) {
 		String original = ((CredentialDomain)domain).getDefaultUsername();
-		if( user != null && !user.equals(original)) {
-			((CredentialDomain)domain).setDefaultUsername(user);
-			fireEvent(DEFAULT_CREDENTIAL_CHANGED, domain, user);
+		ICredentialType originalType = ((CredentialDomain)domain).getDefaultUserType();
+		if( (user != null && !user.equals(original)) || (type != null && !type.equals(originalType))) {
+			((CredentialDomain)domain).setDefaultUsername(user, type);
+			fireEvent(DEFAULT_CREDENTIAL_CHANGED, domain, user, type);
 		}
+	}
+	
+	@Override
+	public void setDefaultCredential(ICredentialDomain domain, String user) throws IllegalArgumentException {
 	}
 
 	
@@ -302,19 +343,19 @@ public class CredentialsModel implements ICredentialsModel {
 		listeners.remove(listener);
 	}
 
-	String promptForCredentials(ICredentialDomain domain, String user, boolean canChangeUser) throws UsernameChangedException {
-		ICredentialsPrompter passwordProvider = createPasswordPrompt();
-		passwordProvider.init(domain, user, canChangeUser);
+	ICredentialResult promptForCredentials(ICredentialDomain domain, ICredentialType type, String user, boolean canChangeUser) throws UsernameChangedException {
+		ICredentialsPrompter passwordProvider = CredentialExtensionManager.getDefault().createPasswordPrompt(type);
+		passwordProvider.init(domain, type, user, canChangeUser);
 		passwordProvider.prompt();
 		String retUser = passwordProvider.getUsername();
-		String retPass = passwordProvider.getPassword();
-		if( retUser == null || retPass == null || retUser.isEmpty() || retPass.isEmpty()) {
+		ICredentialResult retPass = passwordProvider.getPassword();
+		if( retUser == null || retPass == null || retUser.isEmpty()) {
 			return null;
 		}
 		boolean save = passwordProvider.saveChanges();
 		if( save ) {
 			// Update the credentials
-			addCredentials(domain, retUser, retPass);
+			addCredentials(domain, retUser, false, retPass.getType(), retPass.toMap());
 			save();
 		}
 		if(!user.equals(retUser)) {
@@ -324,49 +365,19 @@ public class CredentialsModel implements ICredentialsModel {
 	}
 
 	
-	String promptForCredentials(ICredentialDomain domain, String user) throws UsernameChangedException {
-		return promptForCredentials(domain, user, true);
+	ICredentialResult promptForCredentials(ICredentialDomain domain, ICredentialType type, String user) throws UsernameChangedException {
+		return promptForCredentials(domain, type, user, true);
 	}
 	
 
-	String promptForPassword(ICredentialDomain domain, String user) {
+	ICredentialResult promptForPassword(ICredentialDomain domain, ICredentialType type, String user) {
 		try {
-			return promptForCredentials(domain, user, true);
+			return promptForCredentials(domain, type, user, true);
 		} catch(UsernameChangedException uce) {
 			// Should *never* happen
 			FoundationCorePlugin.pluginLog().logError("Error: username has changed when not allowed", uce);
 			return uce.getPassword();
 		}
 	}
-	
-	private static final String CREDENTIAL_PROMPTER_EXT_PT = "org.jboss.tools.foundation.core.credentialPrompter";
-	private ICredentialsPrompter createPasswordPrompt() {
-		IExtension[] extensions = findExtension(CREDENTIAL_PROMPTER_EXT_PT);
-		if( extensions.length > 1 ) {
-			FoundationCorePlugin.pluginLog().logError("Multiple credential prompters found for extension point " + CREDENTIAL_PROMPTER_EXT_PT);
-		}
-		for (int i = 0; i < extensions.length; i++) {
-			IConfigurationElement elements[] = extensions[i].getConfigurationElements();
-			for (int j = 0; j < elements.length; j++) {
-				if( elements.length > 1 ) {
-					FoundationCorePlugin.pluginLog().logError("Multiple credential prompters found for extension point " + CREDENTIAL_PROMPTER_EXT_PT);
-				}
-				try {
-					return (ICredentialsPrompter) elements[j].createExecutableExtension("class");
-				} catch (InvalidRegistryObjectException e) {
-					FoundationCorePlugin.pluginLog().logError("Unable to load a credential prompter for extension point " + CREDENTIAL_PROMPTER_EXT_PT);
-				} catch (CoreException e) {
-					FoundationCorePlugin.pluginLog().logError("Unable to load a credential prompter for extension point " + CREDENTIAL_PROMPTER_EXT_PT);
-				}
-			}
-		}
-		return null;
-	}
 
-	private static IExtension[] findExtension(String extensionId) {
-		IExtensionRegistry registry = Platform.getExtensionRegistry();
-		IExtensionPoint extensionPoint = registry
-				.getExtensionPoint(extensionId);
-		return extensionPoint.getExtensions();
-	}
 }

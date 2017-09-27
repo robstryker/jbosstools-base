@@ -1,5 +1,5 @@
 /******************************************************************************* 
- * Copyright (c) 2015 Red Hat, Inc. 
+ * Copyright (c) 2017 Red Hat, Inc. 
  * Distributed under license by Red Hat, Inc. All rights reserved. 
  * This program is made available under the terms of the 
  * Eclipse Public License v1.0 which accompanies this distribution, 
@@ -10,39 +10,24 @@
  ******************************************************************************/
 package org.jboss.tools.foundation.core.credentials;
 
-/**
- * Provide a password for the given domain / user combination
- */
-public interface ICredentialsPrompter {
+import java.util.Map;
+
+public interface ICredentialType {
+	/**
+	 * Get an ID for this credential type
+	 * @return
+	 */
+	public String getId();
 	
 	/**
-	 * Initialize the prompter with information
+	 * Load a saved key / token / password from secure storage, 
+	 * or fetch a new key / token / etc on the fly given these details
+	 * 
 	 * @param domain
 	 * @param user
-	 */
-	public void init(ICredentialDomain domain, ICredentialType type, String user, boolean canChangeUser);
-	
-	/**
-	 * Prompt the user to complete the prompt
-	 */
-	public void prompt();
-	
-	/**
-	 * Get the username
+	 * @param details
 	 * @return
 	 */
-	public String getUsername();
-	
-	/**
-	 * Get the password
-	 * @return
-	 */
-	public ICredentialResult getPassword();
-	
-	/**
-	 * 
-	 * @return
-	 */
-	public boolean saveChanges();
-	
+	public ICredentialResult resolveCredentials(ICredentialDomain domain, 
+			String user, Map<String, String> details);
 }

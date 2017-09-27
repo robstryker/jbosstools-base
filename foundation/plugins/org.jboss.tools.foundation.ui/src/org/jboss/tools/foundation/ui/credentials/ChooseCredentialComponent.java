@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import org.eclipse.equinox.security.storage.StorageException;
 import org.eclipse.jface.window.Window;
@@ -29,19 +30,27 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.jboss.tools.foundation.core.credentials.CredentialService;
 import org.jboss.tools.foundation.core.credentials.ICredentialDomain;
+import org.jboss.tools.foundation.core.credentials.ICredentialResult;
+import org.jboss.tools.foundation.core.credentials.ICredentialType;
 import org.jboss.tools.foundation.ui.credentials.internal.NewCredentialUserDialog;
 import org.jboss.tools.foundation.ui.internal.FoundationUIPlugin;
 
 public class ChooseCredentialComponent {
 	protected ArrayList<ICredentialDomain> domainList;
+	protected ArrayList<ICredentialType> typeList;
 	protected ArrayList<ICredentialCompositeListener> listeners = new ArrayList<ICredentialCompositeListener>();
 	protected String initialUsername;
+	private boolean domainsVisible, typesVisible;
 	protected SelectionListener userComboListener, domainComboListener;
 	
 	// Widgets
-	protected Combo domainCombo, userCombo;
-	protected Label domainLabel, usernameLabel;
+	protected Combo domainCombo, typesCombo, userCombo;
+	protected Label domainLabel, typesLabel, usernameLabel;
 	protected Button addUser, editUser;
+	
+	private String selectedUser;
+	private ICredentialType selectedType;
+	private ICredentialDomain selectedDomain;
 	
 	
 	/**
@@ -69,9 +78,70 @@ public class ChooseCredentialComponent {
 	 * @param selectedUsername
 	 */
 	public ChooseCredentialComponent(String[] domains, String selectedUsername) {
+		this(domains, new ICredentialType[] {CredentialService.getCredentialModel().getDefaultCredentialType()}, selectedUsername);
+	}
+	
+	public ChooseCredentialComponent(String[] domains, ICredentialType[] types, String selectedUsername) {
 		initialUsername = selectedUsername;
 		domainList = findDomains(domains);
+		if( types == null ) {
+			types = CredentialService.getCredentialModel().getCredentialTypes();
+		}
+		typeList = new ArrayList<ICredentialType>(Arrays.asList(types));
+		domainsVisible = true;
+		typesVisible = true;
+		initState(selectedUsername);
 	}
+	private void initState(String selectedUsername) {
+		
+		if( domainList.size() == 1 ) {
+			selectedDomain = domainList.get(0);
+		}
+		if( typeList.size() == 1 ) {
+			selectedType = typeList.get(0);
+		}
+		if( selectedUsername != null ) {
+			selectedUser = selectedUsername;
+			if( selectedDomain == null ) {
+				ICredentialDomain[] possible = findDomainWithUser(selectedUser);
+				if( possible != null && possible.length > 0 ) {
+					selectedDomain = possible[0];
+					if( selectedType == null ) { 
+						ICredentialType[] types = selectedDomain.getCredentialTypes(selectedUser);
+						if( types != null && types.length > 0 ) {
+							selectedType = types[0];
+						}
+					}
+				}
+			} else if( selectedType == null ) {
+				ICredentialType[] types = selectedDomain.getCredentialTypes(selectedUser);
+				if( types != null && types.length > 0 ) {
+					selectedType = types[0];
+				}
+			}
+		}
+	}
+	private ICredentialDomain[] findDomainWithUser(String user) {
+		Iterator<ICredentialDomain> dit = domainList.iterator();
+		ArrayList<ICredentialDomain> ret = new ArrayList<ICredentialDomain>();
+		ICredentialDomain tmp;
+		while(dit.hasNext()) {
+			tmp = dit.next();
+			if( Arrays.asList(tmp.getUsernames()).contains(user)) {
+				ret.add(tmp);
+			}
+		}
+		return (ICredentialDomain[]) ret.toArray(new ICredentialDomain[ret.size()]);
+	}
+	
+	public void setDomainsVisible(boolean val) {
+		this.domainsVisible = val;
+	}
+
+	public void setTypesVisible(boolean val) {
+		this.typesVisible = val;
+	}
+
 	
 	public void create(Composite parent) {
 		createWidgets(parent);
@@ -79,13 +149,59 @@ public class ChooseCredentialComponent {
 		refreshUserCombo(true);
 	}
 	
+	
+	private void createDomainCombo(Composite parent) {
+		if( domainsVisible) {
+			domainLabel = new Label(parent, SWT.NONE);
+			domainLabel.setText("Domain: ");
+			domainCombo = new Combo(parent, SWT.READ_ONLY);
+			String[] dNames = findDomainNames(domainList);
+			domainCombo.setItems(dNames);
+			int found = -1;
+			if( selectedDomain != null ) {
+				for( int i = 0; i < dNames.length && found == -1; i++ ) {
+					if( dNames[i].equals(selectedDomain.getId())) {
+						found = i;
+					}
+				}
+			} else {
+				found = 0;
+			}
+			domainCombo.select(found);
+			if( domainList.size() == 1 ) {
+				domainCombo.setEnabled(false);
+			}
+		}
+	}
+	
+	private void createTypeCombo(Composite parent) {
+		if( typesVisible ) {
+			typesLabel = new Label(parent, SWT.NONE);
+			typesLabel.setText("Credential Type: ");
+			String[] tNames = findTypeNames(typeList);
+			typesCombo = new Combo(parent, SWT.READ_ONLY);
+			typesCombo.setItems(tNames);
+			typesCombo.select(0);
+			int found = -1;
+			if( selectedType != null ) {
+				for( int i = 0; i < tNames.length && found == -1; i++ ) {
+					if( tNames[i].equals(selectedType.getId())) {
+						found = i;
+					}
+				}
+			} else {
+				found = 0;
+			}
+			typesCombo.select(found);
+			if( typeList.size() == 1 ) {
+				typesCombo.setEnabled(false);
+			}
+		}
+	}
+	
 	protected void createWidgets(Composite parent) {
-		domainLabel = new Label(parent, SWT.NONE);
-		domainLabel.setText("Domain: ");
-		
-		domainCombo = new Combo(parent, SWT.READ_ONLY);
-		domainCombo.setItems(findDomainNames(domainList));
-		domainCombo.select(0);
+		createDomainCombo(parent);
+		createTypeCombo(parent);
 
 		
 		usernameLabel = new Label(parent, SWT.NONE);
@@ -104,24 +220,36 @@ public class ChooseCredentialComponent {
 		
 		addUser = new Button(editAddParent, SWT.PUSH);
 		addUser.setText("Add...");
-		
-		if( domainList.size() == 1 ) {
-			domainCombo.setEnabled(false);
+	}
+
+	private void updateDomainValue() {
+		int ind = domainCombo.getSelectionIndex();
+		ICredentialDomain d = null;
+		if (ind != -1) {
+			d = domainList.get(ind);
 		}
+		selectedDomain = d;
+	}
+	private void updateUserValue() {
+		int userIndex = userCombo.getSelectionIndex();
+		selectedUser = userIndex == -1 ? null : userCombo.getItem(userIndex);
 	}
 
 	protected void addWidgetListeners() {
-
-		// Adding listeners
-		domainComboListener = new SelectionAdapter() {
-			public void widgetSelected(SelectionEvent e) {
-				refreshUserCombo();
-			}
-		};
-		domainCombo.addSelectionListener(domainComboListener);
+		if( domainCombo != null ) {
+			// Adding listeners
+			domainComboListener = new SelectionAdapter() {
+				public void widgetSelected(SelectionEvent e) {
+					updateDomainValue();
+					refreshUserCombo();
+				}
+			};
+			domainCombo.addSelectionListener(domainComboListener);
+		}
 		
 		userComboListener = new SelectionAdapter() {
 			public void widgetSelected(SelectionEvent e) {
+				updateUserValue();
 				fireChanged();
 			}
 		};
@@ -143,7 +271,7 @@ public class ChooseCredentialComponent {
 	
 	private void editUserPressed() {
 		NewCredentialUserDialog dialog = new NewCredentialUserDialog(
-				domainCombo.getShell(), CredentialService.getCredentialModel(), getDomain(), getUser());
+				domainCombo.getShell(), CredentialService.getCredentialModel(), getDomain(), getCredentialType(), getUser());
 		if( dialog.open() == Window.OK) {
 			CredentialService.getCredentialModel().removeCredentials(getDomain(), getUser());
 			credentialDialogOkPressed(dialog);
@@ -162,11 +290,12 @@ public class ChooseCredentialComponent {
 	private void credentialDialogOkPressed(NewCredentialUserDialog dialog) {
 		ICredentialDomain cd = dialog.getDomain();
 		String name = dialog.getUser();
-		String pass = dialog.getPass();
+		Map<String, String> properties= dialog.getProperties();
+		ICredentialType type = dialog.getCredentialType();
 		if( dialog.isAlwaysPrompt()) {
-			CredentialService.getCredentialModel().addPromptedCredentials(cd, name);
+			CredentialService.getCredentialModel().addPromptedCredentials(cd, type, name);
 		} else {
-			CredentialService.getCredentialModel().addCredentials(cd, name, pass);
+			CredentialService.getCredentialModel().addCredentials(cd, type, name, properties);
 		}
 		CredentialService.getCredentialModel().save();
 		refreshUserCombo(name, true);
@@ -201,6 +330,7 @@ public class ChooseCredentialComponent {
 				}
 			}
 		}
+		updateUserValue();
 		if( fire )
 			fireChanged();
 		userCombo.getParent().layout(false, false);
@@ -219,6 +349,14 @@ public class ChooseCredentialComponent {
 		return true;
 	}
 
+	private String[] findTypeNames(List<ICredentialType> types) {
+		ArrayList<String> ret = new ArrayList<>();
+		Iterator<ICredentialType> tit = types.iterator();
+		while(tit.hasNext()) {
+			ret.add(tit.next().getId());
+		}
+		return (String[]) ret.toArray(new String[ret.size()]);
+	}
 	
 	private String[] findDomainNames(List<ICredentialDomain> domains) {
 		ArrayList<String> ret = new ArrayList<String>();
@@ -254,24 +392,22 @@ public class ChooseCredentialComponent {
 	}
 	
 	public ICredentialDomain getDomain() {
-		int ind = domainCombo.getSelectionIndex();
-		if( ind != -1 ) {
-			ICredentialDomain d = domainList.get(ind);
-			return d;
-		}
-		return null;
+		return selectedDomain;
 	}
 	
 	public String getUser() {
-		int userIndex = userCombo.getSelectionIndex();
-		return userIndex == -1 ? null : userCombo.getItem(userIndex);
+		return selectedUser;
 	}
 	
-	public String getPassword() {
+	public ICredentialType getCredentialType() {
+		return selectedType;
+	}
+	
+	public ICredentialResult getPassword() {
 		ICredentialDomain cd = getDomain();
 		if( cd != null ) {
 			try {
-				return cd.getPassword(getUser());
+				return cd.getPassword(getUser(), selectedType);
 			} catch(StorageException se) {
 				FoundationUIPlugin.pluginLog().logError(se);
 			}
@@ -299,7 +435,12 @@ public class ChooseCredentialComponent {
 			// We're in a 2 column grid
 			GridData gd2 = new GridData();
 			gd2.widthHint = 200;
-			domainCombo.setLayoutData(gd2);
+			if( domainsVisible ) {
+				domainCombo.setLayoutData(gd2);
+			}
+			if( typesVisible ) {
+				typesCombo.setLayoutData(gd2);
+			}
 			userCombo.setLayoutData(gd2);
 			GridData gd3 = new GridData();
 			gd3.horizontalSpan = 2;
@@ -310,7 +451,12 @@ public class ChooseCredentialComponent {
 			domainData.widthHint = 200;
 			domainData.horizontalSpan = n-1;
 			domainData.horizontalAlignment = SWT.FILL;
-			domainCombo.setLayoutData(domainData);
+			if( domainsVisible ) {
+				domainCombo.setLayoutData(domainData);
+			}
+			if( typesVisible ) {
+				typesCombo.setLayoutData(domainData);
+			}
 
 			GridData userData = new GridData();
 			userData.widthHint = 200;

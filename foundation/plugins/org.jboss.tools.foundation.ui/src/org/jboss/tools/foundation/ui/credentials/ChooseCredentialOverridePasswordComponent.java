@@ -10,6 +10,9 @@
  ******************************************************************************/
 package org.jboss.tools.foundation.ui.credentials;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.eclipse.equinox.security.storage.StorageException;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
@@ -20,7 +23,10 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.jboss.tools.foundation.core.credentials.CredentialService;
 import org.jboss.tools.foundation.core.credentials.ICredentialDomain;
-import org.jboss.tools.foundation.core.credentials.UsernameChangedException;
+import org.jboss.tools.foundation.core.credentials.ICredentialResult;
+import org.jboss.tools.foundation.core.credentials.ICredentialType;
+import org.jboss.tools.foundation.core.credentials.ICredentialsModel;
+import org.jboss.tools.foundation.core.credentials.internal.StringPasswordCredentialResult;
 import org.jboss.tools.foundation.ui.internal.FoundationUIPlugin;
 
 
@@ -91,18 +97,24 @@ public class ChooseCredentialOverridePasswordComponent extends ChooseCredentialC
 		passwordText.addModifyListener(passwordModifyListener);
 	}
 	
-	public String getPassword() {
+	public ICredentialResult getPassword() {
 		// If the user is a prompt-every-time username, pull it from the password text
 		ICredentialDomain cd = getDomain();
-		if( passwordModified || CredentialService.getCredentialModel().credentialRequiresPrompt(cd, getUser())) {
-			return passwordText.getText();
+		ICredentialType type = getCredentialType();
+		ICredentialsModel model = CredentialService.getCredentialModel();
+		if( passwordModified || model.credentialRequiresPrompt(cd, type, getUser())) {
+			String text = passwordText.getText();
+			Map<String, String> details = new HashMap<String,String>();
+			details.put(StringPasswordCredentialResult.PROPERTY_PASS, text);
+			return type.resolveCredentials(cd, getUser(), details);
 		}
 		
 		// Otherwise, pull from model
 		if( cd != null ) {
 			try {
-				return cd.getPassword(getUser());
-			} catch(StorageException se) {
+				ICredentialResult res = cd.getPassword(getUser(), type);
+				return res;
+			} catch(StorageException | UnsupportedOperationException se) {
 				FoundationUIPlugin.pluginLog().logError(se);
 			}
 		}
@@ -138,20 +150,27 @@ public class ChooseCredentialOverridePasswordComponent extends ChooseCredentialC
 		String user = getUser();
 		ICredentialDomain cd = getDomain();
 		if( user != null && cd != null ) {
-			boolean requiresPrompt = CredentialService.getCredentialModel().credentialRequiresPrompt(cd, user);
+			ICredentialsModel model = CredentialService.getCredentialModel();
+			ICredentialType defType = getSelectedCredentialType();
+			boolean requiresPrompt = model.credentialRequiresPrompt(cd, defType, user);
 			passwordText.removeModifyListener(passwordModifyListener);
 			try {
-				if( requiresPrompt) {
+				if (requiresPrompt) {
 					passwordText.setText("");
 				} else {
-					passwordText.setText(cd.getPassword(user));
+					ICredentialResult res = cd.getPassword(user, defType);
+					passwordText.setText(res.stringValue());
 				}
-			} catch(StorageException se) {
+			} catch (StorageException se) {
 				// ignore
 			} finally {
 				passwordText.addModifyListener(passwordModifyListener);
 			}
 		}
+	}
+	
+	private ICredentialType getSelectedCredentialType() {
+		return CredentialService.getCredentialModel().getDefaultCredentialType();
 	}
 	
 }

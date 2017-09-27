@@ -13,6 +13,7 @@ package org.jboss.tools.foundation.ui.credentials.internal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Map;
 
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -39,6 +40,7 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.jboss.tools.foundation.core.credentials.CredentialService;
 import org.jboss.tools.foundation.core.credentials.ICredentialDomain;
+import org.jboss.tools.foundation.core.credentials.ICredentialType;
 import org.jboss.tools.foundation.ui.credentials.internal.FaviconCache.FaviconCacheListener;
 import org.jboss.tools.foundation.ui.internal.FoundationUIPlugin;
 import org.jboss.tools.foundation.ui.util.FormDataUtility;
@@ -85,11 +87,14 @@ public class CredentialPreferencePage extends PreferencePage implements IWorkben
 		}
 		public Object[] getChildren(Object parentElement) {
 			if( parentElement instanceof ICredentialDomain) {
-				ICredentialDomain p = (ICredentialDomain)parentElement;
-				String[] all = ((ICredentialDomain)parentElement).getUsernames();
-				ArrayList<CredentialUser> ret = new ArrayList<CredentialUser>(all.length);
-				for( int i = 0; i < all.length; i++ ) {
-					ret.add(new CredentialUser(p, all[i]));
+				ICredentialDomain domain = (ICredentialDomain)parentElement;
+				String[] users = domain.getUsernames();
+				ArrayList<CredentialUser> ret = new ArrayList<CredentialUser>();
+				for( int i = 0; i < users.length; i++ ) {
+					ICredentialType[] types = domain.getCredentialTypes(users[i]);
+					for( int j = 0; j < types.length; j++ ) {
+						ret.add(new CredentialUser(domain, types[j], users[i]));
+					}
 				}
 				
 				// Sort the users to be alphabetical, but with default on top
@@ -129,9 +134,11 @@ public class CredentialPreferencePage extends PreferencePage implements IWorkben
 	 */
 	private static class CredentialUser {
 		private ICredentialDomain domain;
+		private ICredentialType type;
 		private String user;
-		public CredentialUser(ICredentialDomain domain, String user) {
+		public CredentialUser(ICredentialDomain domain, ICredentialType type, String user) {
 			this.domain = domain;
+			this.type = type;
 			this.user = user;
 		}
 	}
@@ -338,15 +345,16 @@ public class CredentialPreferencePage extends PreferencePage implements IWorkben
 	
 	private void editUserPressed(CredentialUser u) {
 		NewCredentialUserDialog dialog = new NewCredentialUserDialog(
-				getShell(), CredentialService.getCredentialModel(), u.domain, u.user);
+				getShell(), CredentialService.getCredentialModel(), u.domain, u.type, u.user);
 		if( dialog.open() == Window.OK) {
 			String name = dialog.getUser();
-			String pass = dialog.getPass();
-			CredentialService.getCredentialModel().removeCredentials(u.domain, u.user);
+			Map<String, String> props = dialog.getProperties();
+			ICredentialType type = dialog.getCredentialType();
+			CredentialService.getCredentialModel().removeCredentials(u.domain, u.type, u.user);
 			if( dialog.isAlwaysPrompt()) {
-				CredentialService.getCredentialModel().addPromptedCredentials(u.domain, u.user);
+				CredentialService.getCredentialModel().addPromptedCredentials(u.domain, type, name);
 			} else {
-				CredentialService.getCredentialModel().addCredentials(u.domain, name, pass);
+				CredentialService.getCredentialModel().addCredentials(u.domain, type, name, props);
 			}
 			CredentialService.getCredentialModel().save();
 			tv.refresh();
@@ -367,11 +375,12 @@ public class CredentialPreferencePage extends PreferencePage implements IWorkben
 		if( dialog.open() == Window.OK) {
 			ICredentialDomain cd = dialog.getDomain();
 			String name = dialog.getUser();
-			String pass = dialog.getPass();
+			ICredentialType type = dialog.getCredentialType();
+			Map<String, String> properties = dialog.getProperties();
 			if( dialog.isAlwaysPrompt()) {
-				CredentialService.getCredentialModel().addPromptedCredentials(cd, name);
+				CredentialService.getCredentialModel().addPromptedCredentials(cd, type, name);
 			} else {
-				CredentialService.getCredentialModel().addCredentials(cd, name, pass);
+				CredentialService.getCredentialModel().addCredentials(cd, type, name, properties);
 			}
 			CredentialService.getCredentialModel().save();
 			tv.refresh();

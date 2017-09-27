@@ -44,7 +44,15 @@ public interface ICredentialDomain {
 	 * @return
 	 */
 	public boolean userExists(String user);
-	
+
+	/**
+	 * Does the given username exist in the model
+	 * @param user
+	 * @param type
+	 * @return
+	 */
+	public boolean userExists(String user, ICredentialType type);
+
 	/**
 	 * Get a list of usernames persisted for this domain
 	 * @return
@@ -52,23 +60,32 @@ public interface ICredentialDomain {
 	public String[] getUsernames();
 	
 	/**
+	 * Get the list of credential types for the given user
+	 * @param user
+	 * @return
+	 */
+	public ICredentialType[] getCredentialTypes(String user);
+	
+	/**
 	 * Get the password for the given username
 	 * @param user
+	 * @param credential type
 	 * @return
 	 * @throws StorageException
 	 * @throws UsernameChangedException if the user has changed the username when prompted 
 	 */
-	public String getCredentials(String user) throws StorageException, UsernameChangedException;
+	public ICredentialResult getCredentials(String user, ICredentialType type) throws StorageException, UsernameChangedException;
 	
 	/**
 	 * Get the password for the given username. 
 	 * The user has no opportunity to change the username.
 	 * 
 	 * @param user
+	 * @param credential type
 	 * @return
 	 * @throws StorageException
 	 */
-	public String getPassword(String user) throws StorageException;
+	public ICredentialResult getPassword(String user, ICredentialType type) throws StorageException;
 	
 	/**
 	 * Get the default username for this domain, if one exists, or null
