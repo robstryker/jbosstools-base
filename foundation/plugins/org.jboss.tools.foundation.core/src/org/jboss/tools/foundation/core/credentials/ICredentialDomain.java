@@ -10,6 +10,8 @@
  ******************************************************************************/
 package org.jboss.tools.foundation.core.credentials;
 
+import java.util.Map;
+
 import org.eclipse.equinox.security.storage.StorageException;
 
 /**
@@ -92,4 +94,24 @@ public interface ICredentialDomain {
 	 * @return
 	 */
 	public String getDefaultUsername();
+	
+	/**
+	 * Set a single property for a given user/type combination
+	 * @param user
+	 * @param type
+	 * @param key
+	 * @param value
+	 * @param save
+	 */
+	public void setCredentialProperty(String user, ICredentialType type, String key, String value, boolean save);
+	
+	/**
+ 	 * Set all properties for a given user/type combination
+	 * @param user
+	 * @param type
+	 * @param details
+	 * @param save
+	 */
+	public void setCredentialProperties(String user, ICredentialType type, Map<String, String> details, boolean save);
+
 }

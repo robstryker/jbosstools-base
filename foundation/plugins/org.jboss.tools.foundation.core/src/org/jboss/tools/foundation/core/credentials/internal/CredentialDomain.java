@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import org.eclipse.equinox.security.storage.ISecurePreferences;
 import org.eclipse.equinox.security.storage.SecurePreferencesFactory;
 import org.eclipse.equinox.security.storage.StorageException;
+import org.jboss.tools.foundation.core.credentials.CredentialService;
 import org.jboss.tools.foundation.core.credentials.ICredentialDomain;
 import org.jboss.tools.foundation.core.credentials.ICredentialResult;
 import org.jboss.tools.foundation.core.credentials.ICredentialType;
@@ -264,6 +265,25 @@ public class CredentialDomain implements ICredentialDomain {
 			credentials.put(new UserType(user, type),  details);
 		}
 		return toCredentialResult(user, type, details);
+	}
+	
+	public void setCredentialProperties(String user, ICredentialType type, Map<String, String> details, boolean save) {
+		credentials.put(new UserType(user, type),  details);
+		if( save ) {
+			CredentialService.getCredentialModel().save();
+		}
+	}
+	
+	public void setCredentialProperty(String user, ICredentialType type, String key, String value, boolean save) {
+		Map<String, String> map = credentials.get(new UserType(user, type));
+		if( map != null ) {
+			map.put(key,  value);
+		} else {
+			// TODO error??
+		}
+		if( save ) {
+			CredentialService.getCredentialModel().save();
+		}
 	}
 	
 	private ICredentialResult toCredentialResult(String user, ICredentialType type, Map<String, String> details) {
